@@ -1,0 +1,115 @@
+input_number:
+  vytyazhka_time:
+    name: Время работы вытяжки
+    unit_of_measurement: мин
+    min: 1
+    max: 120
+    step: 1
+    initial: 15
+    icon: mdi:timer-outline
+
+timer:
+  vytyazhka:
+    name: Таймер вытяжки
+    icon: mdi:fan-clock
+
+template:
+  - trigger:
+      - platform: time_pattern
+        seconds: "/1"
+    sensor:
+      - name: Vytyazhka timer left
+        unique_id: vytyazhka_timer_left
+        icon: mdi:timer-outline
+        state: >-
+          {% if is_state('timer.vytyazhka', 'active') %}
+            {% set left = ((state_attr('timer.vytyazhka', 'finishes_at') | as_datetime) - now()).total_seconds() | round(0) | int %}
+            {% set left = [left, 0] | max %}
+            {{ '%02d:%02d' | format(left // 60, left % 60) }}
+          {% else %}
+            00:00
+          {% endif %}
+
+script:
+  vytyazhka_on_for:
+    alias: "Вытяжка: включить на N минут"
+    fields:
+      minutes:
+        description: Минуты работы
+        selector:
+          number:
+            min: 1
+            max: 120
+            unit_of_measurement: мин
+    sequence:
+      - action: timer.start
+        target:
+          entity_id: timer.vytyazhka
+        data:
+          duration: >-
+            {% set m = minutes | int %}
+            {{ '%02d:%02d:00' | format(m // 60, m % 60) }}
+      - action: switch.turn_on
+        target:
+          entity_id: switch.prinuditelnaia_vytiazhka_switch_1
+    mode: single
+
+  vytyazhka_add_time:
+    alias: "Вытяжка: добавить 5 минут"
+    sequence:
+      - action: timer.start
+        target:
+          entity_id: timer.vytyazhka
+        data:
+          duration: >-
+            {% set r = state_attr('timer.vytyazhka', 'remaining') or '0:00:00' %}
+            {% set p = r.split(':') | map('int') | list %}
+            {% set s = p[0] * 3600 + p[1] * 60 + p[2] + 300 %}
+            {{ '%02d:%02d:%02d' | format(s // 3600, (s % 3600) // 60, s % 60) }}
+    mode: single
+
+automation:
+  - alias: "Вытяжка: старт таймера при ручном включении"
+    id: vytyazhka_timer_start
+    trigger:
+      - platform: state
+        entity_id: switch.prinuditelnaia_vytiazhka_switch_1
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: timer.vytyazhka
+        state: "idle"
+    action:
+      - action: timer.start
+        target:
+          entity_id: timer.vytyazhka
+        data:
+          duration: >-
+            {% set m = states('input_number.vytyazhka_time') | int %}
+            {{ '%02d:%02d:00' | format(m // 60, m % 60) }}
+    mode: single
+
+  - alias: "Вытяжка: автоотключение по таймеру"
+    id: vytyazhka_timer_finish
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.vytyazhka
+    action:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.prinuditelnaia_vytiazhka_switch_1
+    mode: single
+
+  - alias: "Вытяжка: сброс таймера при ручном выключении"
+    id: vytyazhka_timer_cancel
+    trigger:
+      - platform: state
+        entity_id: switch.prinuditelnaia_vytiazhka_switch_1
+        to: "off"
+    action:
+      - action: timer.cancel
+        target:
+          entity_id: timer.vytyazhka
+    mode: single

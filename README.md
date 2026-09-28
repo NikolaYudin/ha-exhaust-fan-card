@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/NikolaYudin/ha-exhaust-fan-card?style=flat-square" alt="Release">
+  <img src="https://img.shields.io/github/license/NikolaYudin/ha-exhaust-fan-card?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/Home%20Assistant-2024.8%2B-41BDF5?style=flat-square&logo=homeassistant" alt="HA">
+</p>
+
 # 🌀 Exhaust Fan PRO — панель вытяжки для Home Assistant
 
 Панель управления принудительной вытяжкой: hero-блок с крутящимся вентилятором,
